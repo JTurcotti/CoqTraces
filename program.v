@@ -17,11 +17,58 @@ TODO: prove `make_program` sound via the lemma `make_wf_expression_top_sound`
 
 From Coq Require Import Unicode.Utf8 Strings.String.
 
+(* basic definitions of program elements *)
+
 Inductive branch := Branch (n : nat).
 Definition default_branch := Branch 0.
 Inductive variable := Var (s : string).
 Inductive operator := Op (n : nat).
 Definition default_op := Op 0.
+
+(* the following is boilerplate for module-izing everything *)
+
+Module Branch.
+  Definition t := branch.
+  Definition eq := @eq t.
+  Definition eq_dec : ∀ (x x' : t), {eq x x'} + {~eq x x'}.
+  Proof.
+    unfold eq.
+    decide equality.
+    apply PeanoNat.Nat.eq_dec.
+  Defined.
+End Branch.
+
+Module Bool.
+  Definition t := bool.
+  Definition eq := @eq t.
+    Definition eq_dec : ∀ (x x' : t), {eq x x'} + {~eq x x'}.
+  Proof.
+    unfold eq.
+    decide equality.
+  Defined.
+End Bool.
+
+Module Var.
+  Definition t := variable.
+  Definition eq := @eq t.
+  Definition eq_dec : ∀ (x x' : t), {eq x x'} + {~eq x x'}.
+  Proof.
+    unfold eq.
+    decide equality.
+    apply string_dec.
+  Defined.
+End Var.
+
+Module Op.
+  Definition t := operator.
+  Definition eq := @eq t.
+  Definition eq_dec : ∀ (x x' : t), {eq x x'} + {~eq x x'}.
+  Proof.
+    unfold eq.
+    decide equality.
+    apply PeanoNat.Nat.eq_dec.
+  Defined.
+End Op.
 
 (* TODO: add assignments like x = y that don't involve a binop *)
 Inductive expression :=
@@ -196,5 +243,4 @@ Lemma make_wf_expression_top_sound : ∀ e, expression_well_formed (make_wf_expr
 
 Definition make_program e : program :=
   mkProgram (make_wf_expression_top e) (make_wf_expression_top_sound e).
-
 
