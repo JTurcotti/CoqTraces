@@ -1,3 +1,10 @@
+(*
+This file provides definitions of noninterference and trace noninterference with respect
+to the big step semantics from Semantics.v and paramterized over equivalence relations
+on the input and output memory states. Input and output memory states are both (stack, heap)
+pairs as also defined in Semantics.v.
+*)
+
 From NITraces Require Import Program Traces AssocList Semantics.
 
 From Coq Require Import Lists.List Unicode.Utf8.

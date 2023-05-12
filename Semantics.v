@@ -13,7 +13,7 @@ should be taken in the true or false direction - a key component of our semantic
 
 From NITraces Require Import Program Traces AssocList.
 
-From Coq Require Import Lists.List Unicode.Utf8.
+From Coq Require Import Lists.List Unicode.Utf8 Strings.String.
 Import ListNotations.
 
 (* base values are the core set of values that stack variables can take -
@@ -150,9 +150,11 @@ Definition eval_branch_in_memory (b : branch) (x : variable) (m : memory) (dir :
          end.
 
 
-Definition ε : trace := nil.
+Definition ε {A : Type} : list A := nil.
 
-Notation "[ l ; a ↦ b ]" := ((a, b) :: l) (at level 50).
+Declare Custom Entry assoc_entry.
+Infix "↦" := pair (at level 50).
+Notation "⟦ l ; ab₀ ; .. ; ab₁ ⟧" := (cons ab₀ .. (cons ab₁ l) ..).
 
 Reserved Notation "⟨ e ; m₀ ↓ m₁ ; t ⟩" (at level 50).
 
@@ -170,7 +172,7 @@ applies to the values of the operands *)
 | AssignEval : ∀ σ ρ x₀ x₁ x₂ v₁ v₂ o,
     (Stack.contains σ x₁ v₁) →
     (Stack.contains σ x₂ v₂) →
-    ⟨⦃(x₀) = (x₁) ⊕[o] (x₂)⦄; (σ, ρ) ↓ ([σ ; x₀ ↦ ⦇v₁ ⊕[o] v₂⦈], ρ); ε⟩
+    ⟨⦃(x₀) = (x₁) ⊕[o] (x₂)⦄; (σ, ρ) ↓ (⟦σ ; x₀ ↦ ⦇v₁ ⊕[o] v₂⦈⟧, ρ); ε⟩
 (* the BranchEval rules evaluate branches by checking their guard
 using the eval_branch_in_memory prop, and then sequencing
 the true or false branch to get a new memory state that additionally
@@ -178,11 +180,11 @@ the true or false branch to get a new memory state that additionally
 | BranchEvalTrue : ∀ σ ρ σ' ρ' x b e₀ e₁ t,
     (eval_branch_in_memory b x (σ, ρ) true) →
     ⟨e₀; (σ, ρ) ↓ (σ', ρ'); t⟩ →
-    ⟨⦃if[b] (x) then {{e₀}} else {{e₁}}⦄; (σ, ρ) ↓ (σ', ρ'); [t; b ↦ true]⟩
+    ⟨⦃if[b] (x) then {{e₀}} else {{e₁}}⦄; (σ, ρ) ↓ (σ', ρ'); ⟦t; b ↦ true⟧⟩
 | BranchEvalFalse : ∀ σ ρ σ' ρ' x b e₀ e₁ t,
     (eval_branch_in_memory b x (σ, ρ) true) →
     ⟨e₀; (σ, ρ) ↓ (σ', ρ'); t⟩ →
-    ⟨⦃if[b] (x) then {{e₀}} else {{e₁}}⦄; (σ, ρ) ↓ (σ', ρ'); [t; b ↦ true]⟩
+    ⟨⦃if[b] (x) then {{e₀}} else {{e₁}}⦄; (σ, ρ) ↓ (σ', ρ'); ⟦t; b ↦ true⟧⟩
 (* the SeqEval rule sequences the evaluation of two expression as expected,
  only interesting part is that traces get appended*)
 | SeqEval : ∀ m₀ m₁ m₂ e₀ e₁ t₀ t₁,
@@ -198,4 +200,20 @@ Notation "⟨ e ; m₀ ↓ m₁ ⟩" := (eval e m₀ m₁) (at level 50).
 
 (*TODO: write some examples testing the semantics *)
 
+Open Scope string_scope.
 
+Section Ex.
+  Definition simple_stack : Stack.t := [Var "x" ↦ ⦇BaseValue 0⦈; Var "y" ↦ ⦇BaseValue 1⦈].
+  Definition simple_heap : Heap.t := [BaseValue 0 ↦ [Branch 0]; BaseValue 1 ↦ [Branch 1]].
+  Definition simple_mem : memory := (simple_stack, simple_heap).
+
+  Definition simple_expression := ⦃if x then {x=x⊕x} else {x=x⊕x};
+                                   if y then {y=y⊕y} else {y=y⊕y}⦄.
+
+  Definition simple_prog := make_program simple_expression.
+
+  Definition desired_trace := [Branch 0 ↦ true; Branch 1 ↦ true].
+
+  Example desired_step : ∃ m, ⟨body simple_prog ; simple_mem ↓ m; desired_trace⟩.
+  Admitted.
+End Ex.
